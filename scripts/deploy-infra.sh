@@ -1,5 +1,5 @@
 #!/bin/bash
-REGION=us-east-1
+REGION=eu-south-1
 CLI_PROFILE=awsbootstrap
 STACK_NAME=good-part-of-aws-bootstrap
 EC2_INSTANCE_TYPE=t2.micro
