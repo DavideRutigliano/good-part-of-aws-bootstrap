@@ -4,9 +4,15 @@ CLI_PROFILE=awsbootstrap
 STACK_NAME=good-part-of-aws-bootstrap
 EC2_INSTANCE_TYPE=t2.micro
 
+GH_OWNER=DavideRutigliano
+GH_REPO=good-part-of-aws-bootstrap
+GH_BRANCH=main
+GH_ACCESS_TOKEN=$(cat ~/.github/aws-bootstrap-demo-token)
+
 AWS_ACCOUNT_ID=`aws sts get-caller-identity --profile $CLI_PROFILE --query "Account" --output text`
 CODEPIPELINE_BUCKET="$STACK_NAME-$REGION-codepipeline-$AWS_ACCOUNT_ID"
 
+# Deploy the CloudFormation template for CodePipeline S3 bucket
 echo -e "\n\n=========== Deploying setup.yml ==========="
 aws cloudformation deploy \
     --profile $CLI_PROFILE \
@@ -18,7 +24,7 @@ aws cloudformation deploy \
     --parameter-overrides \
     CodePipelineBucket=$CODEPIPELINE_BUCKET
 
-# Deploy the CloudFormation template
+# Deploy the CloudFormation template for the app infra
 echo -e "\n\n=========== Deploying main.yml ==========="
 aws cloudformation deploy \
     --profile $CLI_PROFILE \
@@ -28,7 +34,12 @@ aws cloudformation deploy \
     --no-fail-on-empty-changeset \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \
-        EC2InstanceType=$EC2_INSTANCE_TYPE
+        EC2InstanceType=$EC2_INSTANCE_TYPE \
+        GitHubOwner=$GH_OWNER \
+        GitHubRepo=$GH_REPO \
+        GitHubBranch=$GH_BRANCH \
+        GitHubPersonalAccessToken=$GH_ACCESS_TOKEN \
+        CodePipelineBucket=$CODEPIPELINE_BUCKET
 
 # If the deploy succeeded, show the DNS name of the created instance
 if [ $? -eq 0 ]; then
