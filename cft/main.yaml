@@ -33,7 +33,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIp: 95.235.155.12/32
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
@@ -84,10 +84,10 @@ Resources:
             /home/ec2-user/install:
               source: !Sub "https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install"
               mode: "000755" # executable
-              commands:
-                00-install-cd-agent: 
-                  command: "./install auto"
-                  cwd: "/home/ec2-user/"
+          commands:
+            00-install-cd-agent: 
+              command: "./install auto"
+              cwd: "/home/ec2-user/"
     Properties:
       ImageId: !Ref EC2AMI
       InstanceType: !Ref EC2InstanceType
@@ -195,7 +195,7 @@ Resources:
       Ec2TagFilters:
         - Key: aws:cloudformation:stack-name
           Type: KEY_AND_VALUE
-      Value: !Ref AWS::StackName
+          Value: !Ref AWS::StackName
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -204,35 +204,35 @@ Resources:
       ArtifactStore:
         Location: !Ref CodePipelineBucket
         Type: S3
-        RoleArn: !GetAtt DeploymentRole.Arn
-        Stages:
-          - Name: Source
-            Actions:
-              - Name: Source
-                ActionTypeId:
-                  Category: Source
-                  Owner: ThirdParty
-                  Version: 1
-                  Provider: GitHub
-      OutputArtifacts:
+      RoleArn: !GetAtt DeploymentRole.Arn
+      Stages:
         - Name: Source
-          Configuration:
-            Owner: !Ref GitHubOwner
-            Repo: !Ref GitHubRepo
-            Branch: !Ref GitHubBranch
-            OAuthToken: !Ref GitHubPersonalAccessToken
-            PollForSourceChanges: false ❶
-          RunOrder: 1
+          Actions:
+            - Name: Source
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubPersonalAccessToken
+                PollForSourceChanges: false
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: Source
+              RunOrder: 1
         - Name: Build
           Actions:
             - Name: Build
-              Provider: CodeBuild
               Configuration:
                 ProjectName: !Ref BuildProject
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Version: 1
+                Provider: CodeBuild
               InputArtifacts:
                 - Name: Source
               OutputArtifacts:
@@ -241,7 +241,6 @@ Resources:
         - Name: Staging
           Actions:
             - Name: Staging
-              Provider: CodeDeploy
               Configuration:
                 ApplicationName: !Ref DeploymentApplication
                 DeploymentGroupName: !Ref StagingDeploymentGroup
@@ -249,24 +248,25 @@ Resources:
                 Category: Deploy
                 Owner: AWS
                 Version: 1
+                Provider: CodeDeploy
               InputArtifacts:
                 - Name: Build
               RunOrder: 1
 
   PipelineWebhook:
     Type: AWS::CodePipeline::Webhook
-      Properties:
-        Authentication: GITHUB_HMAC
-        AuthenticationConfiguration:
-          SecretToken: !Ref GitHubPersonalAccessToken
-        Filters:
-          - JsonPath: $.ref
-        MatchEquals: 'refs/heads/{Branch}'
-        TargetPipeline: !Ref Pipeline
-        TargetAction: Source
-        Name: !Sub 'webhook-${AWS::StackName}'
-        TargetPipelineVersion: !GetAtt Pipeline.Version
-        RegisterWithThirdParty: true
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: !Ref GitHubPersonalAccessToken
+      Filters:
+        - JsonPath: $.ref
+          MatchEquals: 'refs/heads/{Branch}'
+      TargetPipeline: !Ref Pipeline
+      TargetAction: Source
+      Name: !Sub 'webhook-${AWS::StackName}'
+      TargetPipelineVersion: !GetAtt Pipeline.Version
+      RegisterWithThirdParty: true
 
 Outputs:
   InstanceEndpoint:
