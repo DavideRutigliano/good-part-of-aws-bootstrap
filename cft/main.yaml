@@ -186,6 +186,47 @@ Resources:
         - Key: Name
           Value: !Ref AWS::StackName
 
+  ScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: "1"
+        MaxBatchSize: "1"
+        PauseTime: "PT15M"
+        WaitOnResourceSignals: "true"
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+    Properties:
+      AutoScalingGroupName: !Sub 'ASG_${AWS::StackName}'
+      AvailabilityZones:
+        - !Select [ 0, !GetAZs '' ]
+        - !Select [ 1, !GetAZs '' ]
+      MinSize: 2
+      MaxSize: 4
+      HealthCheckGracePeriod: 0
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref InstanceLaunchTemplate
+        Version: !GetAtt InstanceLaunchTemplate.LatestVersionNumber
+      TargetGroupARNs:
+        - !Ref LoadBalancerTargetGroup
+      MetricsCollection:
+        - Granularity: "1Minute"
+          Metrics:
+            - "GroupMaxSize"
+            - "GroupInServiceInstances"
+      VPCZoneIdentifier:
+        - !Ref SubnetAZ1
+        - !Ref SubnetAZ2
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+          PropagateAtLaunch: "true"
+
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -195,19 +236,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Ref AWS::StackName
-
-  InternetGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref InternetGateway
-      VpcId: !Ref VPC
 
   SubnetAZ1:
     Type: AWS::EC2::Subnet
@@ -235,6 +263,32 @@ Resources:
         - Key: AZ
           Value: !Select [ 1, !GetAZs '' ]
 
+  # PrivateSubnetAZ1:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     AvailabilityZone: !Select [ 0, !GetAZs '' ]
+  #     CidrBlock: 10.0.128.0/18
+  #     MapPublicIpOnLaunch: false
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 0, !GetAZs '' ]
+
+  # PrivateSubnetAZ2:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     AvailabilityZone: !Select [ 1, !GetAZs '' ]
+  #     CidrBlock: 10.0.192.0/18
+  #     MapPublicIpOnLaunch: false
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 1, !GetAZs '' ]
+
   RouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -243,6 +297,26 @@ Resources:
         - Key: Name
           Value: !Ref AWS::StackName
 
+  # PrivateSubnetRouteTableAZ1:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 0, !GetAZs '' ]
+
+  # PrivateSubnetRouteTableAZ2:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 1, !GetAZs '' ]
+
   DefaultPublicRoute:
     Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
@@ -250,6 +324,20 @@ Resources:
       RouteTableId: !Ref RouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
+
+  # PrivateRouteAZ1:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref PrivateSubnetRouteTableAZ1
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NATGatewayAZ1
+
+  # PrivateRouteAZ2:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref PrivateSubnetRouteTableAZ2
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NATGatewayAZ2
 
   SubnetRouteTableAssociationAZ1:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -262,6 +350,65 @@ Resources:
     Properties:
       RouteTableId: !Ref RouteTable
       SubnetId: !Ref SubnetAZ2
+
+  # PrivateSubnetRouteTableAssociationAZ1:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     RouteTableId: !Ref PrivateSubnetRouteTableAZ1
+  #     SubnetId: !Ref PrivateSubnetAZ1
+
+  # PrivateSubnetRouteTableAssociationAZ2:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     RouteTableId: !Ref PrivateSubnetRouteTableAZ2
+  #     SubnetId: !Ref PrivateSubnetAZ2
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # EIPAZ1:
+  #   Type: AWS::EC2::EIP
+  #   DependsOn: InternetGatewayAttachment
+  #   Properties:
+  #     Domain: vpc
+
+  # EIPAZ2:
+  #   Type: AWS::EC2::EIP
+  #   DependsOn: InternetGatewayAttachment
+  #   Properties:
+  #     Domain: vpc
+
+  # NATGatewayAZ1:
+  #   Type: AWS::EC2::NatGateway
+  #   Properties:
+  #     AllocationId: !GetAtt EIPAZ1.AllocationId
+  #     SubnetId: !Ref SubnetAZ1
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 0, !GetAZs '' ]
+
+  # NATGatewayAZ2:
+  #   Type: AWS::EC2::NatGateway
+  #   Properties:
+  #     AllocationId: !GetAtt EIPAZ2.AllocationId
+  #     SubnetId: !Ref SubnetAZ2
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Ref AWS::StackName
+  #       - Key: AZ
+  #         Value: !Select [ 1, !GetAZs '' ]
 
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -347,6 +494,8 @@ Resources:
       ApplicationName: !Ref DeploymentApplication
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
       ServiceRoleArn: !GetAtt DeploymentRole.Arn
+      AutoScalingGroups:
+        - !Ref ScalingGroup
       Ec2TagFilters:
         - Key: aws:cloudformation:stack-name
           Type: KEY_AND_VALUE

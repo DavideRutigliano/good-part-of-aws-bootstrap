@@ -44,6 +44,6 @@ aws cloudformation deploy \
 # If the deploy succeeded, show the DNS name of the load balancer
 if [ $? -eq 0 ]; then
 aws cloudformation list-exports \
-    --profile awsbootstrap \
+    --profile $CLI_PROFILE \
     --query "Exports[?ends_with(Name,'LBEndpoint')].Value"
 fi
