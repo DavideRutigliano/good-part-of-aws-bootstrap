@@ -406,5 +406,3 @@ Outputs:
   HTTPEndpoint:
     Description: The DNS name for the Application Load Balancer
     Value: !Sub "http://${LoadBalancer.DNSName}:80"
-    Export:
-      Name: HTTPEndpoint
