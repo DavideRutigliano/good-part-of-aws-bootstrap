@@ -14,10 +14,6 @@ Resources:
       GroupDescription: !Sub 'Internal Security group for ${AWS::StackName}'
       SecurityGroupIngress:
       - IpProtocol: tcp
-        FromPort: 8080
-        ToPort: 8080
-        CidrIp: 0.0.0.0/0
-      - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
         CidrIp: 0.0.0.0/0
@@ -41,8 +37,10 @@ Resources:
             Service:
             - ec2.amazonaws.com
       ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/CloudWatchFullAccess
-      - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       Policies:
       - PolicyName: ec2DescribeTags
         PolicyDocument:
@@ -331,14 +329,10 @@ Resources:
   # EIPAZ1:
   #   Type: AWS::EC2::EIP
   #   DependsOn: InternetGatewayAttachment
-  #   Properties:
-  #     Domain: vpc
 
   # EIPAZ2:
   #   Type: AWS::EC2::EIP
   #   DependsOn: InternetGatewayAttachment
-  #   Properties:
-  #     Domain: vpc
 
   # NATGatewayAZ1:
   #   Type: AWS::EC2::NatGateway
