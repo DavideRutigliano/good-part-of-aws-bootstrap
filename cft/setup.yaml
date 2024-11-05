@@ -10,7 +10,7 @@ Parameters:
 Resources:
   CodePipelineS3Bucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Ref CodePipelineBucket
       PublicAccessBlockConfiguration:
@@ -25,7 +25,7 @@ Resources:
 
   CloudFormationS3Bucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Ref CloudFormationBucket
       PublicAccessBlockConfiguration:
